@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stylish QR Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif}
+    body{
+      min-height:100vh;
+      background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+      color:#fff;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:30px;
+    }
+    .app{
+      width:100%;
+      max-width:420px;
+      background:rgba(255,255,255,0.08);
+      backdrop-filter:blur(15px);
+      border-radius:20px;
+      padding:20px;
+      box-shadow:0 20px 40px rgba(0,0,0,0.4);
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:20px;
+    }
+    header img{
+      width:60px;
+      height:60px;
+      border-radius:50%;
+      object-fit:cover;
+      border:2px solid #00ffd5;
+      cursor:pointer;
+    }
+    header h2{
+      font-size:1.3rem;
+    }
+    header small{opacity:0.7}
+
+    .card{
+      background:rgba(0,0,0,0.35);
+      border-radius:16px;
+      padding:16px;
+      margin-bottom:16px;
+    }
+
+    input[type=text]{
+      width:100%;
+      padding:12px;
+      border-radius:10px;
+      border:none;
+      outline:none;
+      font-size:1rem;
+      margin-bottom:12px;
+    }
+
+    button{
+      width:100%;
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      background:linear-gradient(135deg,#00ffd5,#00bcd4);
+      font-size:1rem;
+      font-weight:bold;
+      cursor:pointer;
+    }
+    button:hover{opacity:0.9}
+
+    .qr-preview{
+      text-align:center;
+      margin-top:12px;
+    }
+    .qr-preview img{
+      width:200px;
+      height:200px;
+      background:#fff;
+      padding:10px;
+      border-radius:12px;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
+    .actions button{
+      flex:1;
+      background:linear-gradient(135deg,#ff9800,#ff5722);
+    }
+
+    h3{margin-bottom:10px;font-size:1.1rem}
+
+    .history{
+      max-height:200px;
+      overflow-y:auto;
+    }
+    .history-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:rgba(255,255,255,0.08);
+      padding:8px;
+      border-radius:10px;
+      margin-bottom:8px;
+    }
+    .history-item img{
+      width:50px;height:50px;background:#fff;padding:4px;border-radius:8px;
+    }
+    .history-item button{
+      padding:6px 10px;font-size:0.8rem
+    }
+    .history-item span{flex:1;font-size:0.8rem;opacity:0.8}
+
+    input[type=file]{display:none}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <label for="profileInput">
+      <img id="profilePic" src="https://via.placeholder.com/150" />
+    </label>
+    <input type="file" id="profileInput" accept="image/*" />
+    <div>
+      <h2 id="userName">Arafat Hossain Piash</h2>
+      <small>Stylish QR Generator</small>
+    </div>
+  </header>
+
+  <div class="card">
+    <input type="text" id="qrText" placeholder="Enter text or URL" />
+    <button onclick="generateQR()">Generate QR Code</button>
+
+    <div class="qr-preview" id="preview" style="display:none">
+      <img id="qrImg" />
+      <div class="actions">
+        <button onclick="downloadQR()">Download</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>History</h3>
+    <div class="history" id="history"></div>
+  </div>
+</div>
+
+<script>
+const qrImg = document.getElementById('qrImg');
+const preview = document.getElementById('preview');
+const historyDiv = document.getElementById('history');
+
+function generateQR(){
+  const text = document.getElementById('qrText').value.trim();
+  if(!text) return alert('Please enter text');
+
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
+  qrImg.src = url;
+  preview.style.display = 'block';
+
+  saveHistory(text, url);
+}
+
+function downloadQR(src = qrImg.src){
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = 'qr-code.png';
+  a.click();
+}
+
+function saveHistory(text, url){
+  const history = JSON.parse(localStorage.getItem('qrHistory') || '[]');
+  history.unshift({text, url});
+  localStorage.setItem('qrHistory', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory(){
+  const history = JSON.parse(localStorage.getItem('qrHistory') || '[]');
+  historyDiv.innerHTML = '';
+
+  history.forEach(item =>{
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `
+      <img src="${item.url}">
+      <span>${item.text}</span>
+      <button onclick="downloadQR('${item.url}')">DL</button>
+    `;
+    historyDiv.appendChild(div);
+  });
+}
+
+// Profile picture
+const profileInput = document.getElementById('profileInput');
+const profilePic = document.getElementById('profilePic');
+profileInput.addEventListener('change',()=>{
+  const file = profileInput.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    profilePic.src = reader.result;
+    localStorage.setItem('profilePic', reader.result);
+  };
+  reader.readAsDataURL(file);
+});
+
+// Load saved data
+(function init(){
+  const pic = localStorage.getItem('profilePic');
+  if(pic) profilePic.src = pic;
+  renderHistory();
+})();
+</script>
+</body>
+</html>
